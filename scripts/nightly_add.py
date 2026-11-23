@@ -36,14 +36,12 @@ STYLE = ["anime art","phone wallpaper","vertical wallpaper","digital art","illus
 
 def api(tags, limit=100, page=1):
     r = requests.get("https://danbooru.donmai.us/posts.json",
-                     params={"tags": tags, "limit": limit, "page": page,
-                             "only": "id,width,height,file_url,file_size,md5,tag_string_character,"
-                                     "tag_string_copyright,tag_string_general,score"},
+                     params={"tags": tags, "limit": limit, "page": page},
                      headers=UA, timeout=90)
     if r.status_code == 429:
-        time.sleep(4); return None
+        time.sleep(8); return None
     if r.status_code != 200:
-        print("  api http", r.status_code, tags[:60]); return []
+        print("  api http", r.status_code, r.text[:160].replace("\n", " ")); return []
     try: return r.json()
     except Exception: return []
 
@@ -109,9 +107,11 @@ def main():
             if got >= TARGET: break
             q = f"{tag} rating:general width:>=1080 height:>=1920 order:score {EXCL}"
             posts = api(q) or []
+            time.sleep(1.2)
             if not posts:
                 q2 = f"{tag} rating:general width:>=1080 height:>=1920 {EXCL}"
                 posts = api(q2) or []
+                time.sleep(1.2)
             posts = [p for p in posts if p.get("file_url") and p.get("width") and p.get("height")]
             print(f"  {series} :: {tag} -> {len(posts)} candidates")
             tried_tags.append((tag, len(posts)))
