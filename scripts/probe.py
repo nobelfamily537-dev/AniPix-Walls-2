@@ -1,42 +1,37 @@
 #!/usr/bin/env python3
-"""Probe wallhaven for clean portrait anime art for target series."""
 import json, time, requests
-
-UA = {"User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 "
-                    "(KHTML, like Gecko) Chrome/124.0 Safari/537.36"}
-
-QUERIES = {
- "akira": ["akira anime", "shotaro kaneda", "tetsuo shima"],
- "hajime no ippo": ["hajime no ippo", "ippo makunouchi", "takamura mamoru"],
- "dorohedoro": ["dorohedoro", "caiman dorohedoro", "nikkaido"],
- "nier automata": ["nier automata", "2b nier automata", "yorha"],
- "samurai champloo": ["samurai champloo", "mugen samurai champloo", "jin samurai champloo"],
- "shokugeki no soma": ["shokugeki no soma", "souma yukihira", "erina nakiri"],
- "tales from earthsea": ["tales from earthsea", "ged tales from earthsea"],
- "fruits basket": ["fruits basket", "tohru honda", "kyo sohma"],
- "love live": ["love live", "honoka kosaka", "maki nishikino", "nico yazawa"],
- "parasyte": ["parasyte", "shinichi izumi", "migi parasyte"],
+UA = {"User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36"}
+Q = {
+ "akira": ["akira","shotaro kaneda","tetsuo shima","akira neo tokyo"],
+ "hajime no ippo": ["hajime no ippo","ippo","takamura","boxing anime"],
+ "dorohedoro": ["dorohedoro","caiman","nikkaido","noi dorohedoro"],
+ "nier automata": ["nier automata","2b","yorha","nier"],
+ "samurai champloo": ["samurai champloo","mugen","jin samurai","fuu champloo"],
+ "shokugeki no soma": ["shokugeki no soma","erina nakiri","souma","food wars"],
+ "tales from earthsea": ["tales from earthsea","ged","therru","earthsea"],
+ "fruits basket": ["fruits basket","tohru honda","kyo sohma","yuki sohma"],
+ "love live": ["love live","maki nishikino","nico yazawa","honoka"],
+ "parasyte": ["parasyte","shinichi izumi","migi","parasyt"],
 }
-
-def search(q):
-    params = {"q": q, "categories": "010", "purity": "100",
-              "sorting": "relevance", "order": "desc", "page": "1"}
-    r = requests.get("https://wallhaven.cc/api/v1/search", params=params,
-                     headers=UA, timeout=60)
-    if r.status_code != 200:
-        print("HTTP", r.status_code, q)
-        return []
+def search(q, atleast, ratios="9x16"):
+    p = {"q": q, "categories": "010", "purity": "100", "sorting": "relevance",
+         "order": "desc", "page": "1", "ratios": ratios}
+    if atleast: p["atleast"] = atleast
+    r = requests.get("https://wallhaven.cc/api/v1/search", params=p, headers=UA, timeout=60)
+    if r.status_code != 200: return None
     return r.json().get("data", [])
-
-for series, qs in QUERIES.items():
-    print("#### SERIES:", series)
+for s, qs in Q.items():
+    tot = set()
+    print("#### ", s)
     for q in qs:
-        try:
-            items = search(q)
-        except Exception as e:
-            print("  ERR", q, e); continue
-        print(f"  == {q!r} hits={len(items)}")
-        for it in items[:8]:
-            tags = ",".join(t["name"] for t in it.get("tags", []))
-            print(f"    {it['id']} {it['dimension_x']}x{it['dimension_y']} | {tags[:120]}")
-        time.sleep(2)
+        for atl in ("1080x1920", ""):
+            d = search(q, atl)
+            if d is None:
+                print("   ERR", q); continue
+            d = [x for x in d if x["dimension_y"] > x["dimension_x"] and x["dimension_y"] >= 1100]
+            if atl == "":
+                d = [x for x in d if x["id"] not in tot]
+            print(f"   {q!r} atleast={atl or '-'} portrait={len(d)} " + " ".join(f"{x['id']}:{x['dimension_x']}x{x['dimension_y']}" for x in d[:12]))
+            for x in d: tot.add(x["id"])
+            time.sleep(1.5)
+    print("   TOTAL UNIQUE:", len(tot))
