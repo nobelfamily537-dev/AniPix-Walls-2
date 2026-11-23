@@ -1,0 +1,37 @@
+name: nightly-add
+on:
+  push:
+    paths:
+      - "trigger/**"
+permissions:
+  contents: write
+jobs:
+  add:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: deps
+        run: |
+          pip install --quiet requests pillow pytesseract
+          sudo apt-get update -qq && sudo apt-get install -y -qq tesseract-ocr
+      - name: count before
+        run: git ls-files | wc -l
+      - name: fetch
+        run: python scripts/nightly_add.py
+      - name: commit
+        run: |
+          git config user.email "nobelfamily537@gmail.com"
+          git config user.name "AniPix Bot"
+          git add -A
+          echo "--- status ---"; git status --short | head -20
+          DEL=$(git status --porcelain | grep -c '^ D' || true)
+          echo "deletions=$DEL"
+          if [ "$DEL" != "0" ]; then echo "ABORT: deletions detected"; exit 1; fi
+          git commit -m "Nightly add: series with fewest wallpapers (volume 2)" || echo "nothing to commit"
+          git push
+      - name: count after
+        run: git ls-files | wc -l
