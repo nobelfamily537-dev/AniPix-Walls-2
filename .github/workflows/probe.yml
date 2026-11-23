@@ -1,6 +1,8 @@
 name: probe
 on:
-  workflow_dispatch:
+  push:
+    paths:
+      - "trigger/**"
 permissions:
   contents: read
 jobs:
