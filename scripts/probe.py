@@ -1,37 +1,61 @@
 #!/usr/bin/env python3
 import json, time, requests
-UA = {"User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36"}
-Q = {
- "akira": ["akira","shotaro kaneda","tetsuo shima","akira neo tokyo"],
- "hajime no ippo": ["hajime no ippo","ippo","takamura","boxing anime"],
- "dorohedoro": ["dorohedoro","caiman","nikkaido","noi dorohedoro"],
- "nier automata": ["nier automata","2b","yorha","nier"],
- "samurai champloo": ["samurai champloo","mugen","jin samurai","fuu champloo"],
- "shokugeki no soma": ["shokugeki no soma","erina nakiri","souma","food wars"],
- "tales from earthsea": ["tales from earthsea","ged","therru","earthsea"],
- "fruits basket": ["fruits basket","tohru honda","kyo sohma","yuki sohma"],
- "love live": ["love live","maki nishikino","nico yazawa","honoka"],
- "parasyte": ["parasyte","shinichi izumi","migi","parasyt"],
+UA = {"User-Agent": "AniPixWallpaperBot/1.0 (wallpaper indexing; contact nobelfamily537@gmail.com)"}
+TAGS = {
+ "akira": ["akira_(film)","akira_(manga)","kaneda_shotarou","shima_tetsuo"],
+ "hajime no ippo": ["hajime_no_ippo"],
+ "dorohedoro": ["dorohedoro"],
+ "nier automata": ["nier:automata"],
+ "samurai champloo": ["samurai_champloo"],
+ "shokugeki no soma": ["shokugeki_no_souma"],
+ "tales from earthsea": ["ged_senki","tales_from_earthsea"],
+ "fruits basket": ["fruits_basket"],
+ "love live": ["love_live!","love_live!_school_idol_project"],
+ "parasyte": ["kiseijuu"],
 }
-def search(q, atleast, ratios="9x16"):
-    p = {"q": q, "categories": "010", "purity": "100", "sorting": "relevance",
-         "order": "desc", "page": "1", "ratios": ratios}
-    if atleast: p["atleast"] = atleast
-    r = requests.get("https://wallhaven.cc/api/v1/search", params=p, headers=UA, timeout=60)
-    if r.status_code != 200: return None
-    return r.json().get("data", [])
-for s, qs in Q.items():
-    tot = set()
-    print("#### ", s)
-    for q in qs:
-        for atl in ("1080x1920", ""):
-            d = search(q, atl)
-            if d is None:
-                print("   ERR", q); continue
-            d = [x for x in d if x["dimension_y"] > x["dimension_x"] and x["dimension_y"] >= 1100]
-            if atl == "":
-                d = [x for x in d if x["id"] not in tot]
-            print(f"   {q!r} atleast={atl or '-'} portrait={len(d)} " + " ".join(f"{x['id']}:{x['dimension_x']}x{x['dimension_y']}" for x in d[:12]))
-            for x in d: tot.add(x["id"])
-            time.sleep(1.5)
-    print("   TOTAL UNIQUE:", len(tot))
+def db(tag):
+    try:
+        r = requests.get("https://danbooru.donmai.us/posts.json",
+            params={"tags": f"{tag} rating:general width:>=1080 height:>=1920", "limit": 100,
+                    "only": "id,width,height,file_url,tag_string_character,tag_string_copyright"},
+            headers=UA, timeout=60)
+        if r.status_code != 200: return f"HTTP{r.status_code}", []
+        return "ok", r.json()
+    except Exception as e:
+        return f"ERR {e}", []
+def kona(tag):
+    t = tag.replace("_", " ").replace(":", ":")
+    try:
+        r = requests.get("https://konachan.net/post.json",
+            params={"tags": f"{t} rating:safe width:>=1080 height:>=1920", "limit": 100},
+            headers=UA, timeout=60)
+        if r.status_code != 200: return f"HTTP{r.status_code}", []
+        return "ok", r.json()
+    except Exception as e:
+        return f"ERR {e}", []
+def sb(tag):
+    t = tag.replace("_", " ")
+    try:
+        r = requests.get("https://safebooru.org/index.php",
+            params={"page":"dapi","s":"post","q":"index","json":1,"limit":100,"tags":f"{t} rating:safe"},
+            headers=UA, timeout=60)
+        if r.status_code != 200: return f"HTTP{r.status_code}", []
+        j = r.json()
+        return "ok", [p for p in j if int(p["width"])>=1080 and int(p["height"])>=1920 and int(p["height"])>int(p["width"])]
+    except Exception as e:
+        return f"ERR {e}", []
+for s, cands in TAGS.items():
+    print("####", s)
+    for tag in cands:
+        st, d = db(tag)
+        print(f"  DB {tag}: {st} n={len(d)}")
+        for p in d[:3]:
+            print("    ", p["id"], f"{p['width']}x{p['height']}", (p.get("tag_string_character") or "")[:60], "|", (p.get("tag_string_copyright") or "")[:40])
+        time.sleep(1.2)
+        st, k = kona(tag)
+        k = [x for x in k if x["height"]>x["width"]]
+        print(f"  KONA {tag}: {st} n={len(k)}")
+        time.sleep(1.2)
+        st, b = sb(tag)
+        print(f"  SB {tag}: {st} n={len(b)}")
+        time.sleep(1.2)
