@@ -9,18 +9,25 @@ from PIL import Image
 UA = {"User-Agent": "AniPixWallpaperBot/1.0 (wallpaper indexing; nobelfamily537@gmail.com)"}
 
 SPECS = {
- "akira": ("anime", ["akira_(manga)", "akira_(film)", "akira", "kaneda_shotarou"]),
- "hajime no ippo": ("anime", ["hajime_no_ippo", "makunouchi_ippo", "takamura_mamoru"]),
- "dorohedoro": ("anime", ["dorohedoro", "nikkaido", "caiman"]),
- "nier automata": ("game", ["nier_(series)", "yorha_no.2_type_b", "nier_automata"]),
- "samurai champloo": ("anime", ["samurai_champloo", "mugen_(samurai_champloo)", "jin_(samurai_champloo)"]),
- "shokugeki no soma": ("anime", ["shokugeki_no_souma", "nakiri_erina", "yukihira_souma"]),
- "tales from earthsea": ("anime", ["ged_senki", "tales_from_earthsea", "therru"]),
- "fruits basket": ("anime", ["fruits_basket", "honda_tohru", "sohma_kyou"]),
- "love live": ("anime", ["love_live!", "love_live!_school_idol_project", "yazawa_nico", "nishikino_maki"]),
- "parasyte": ("anime", ["kiseijuu", "izumi_shinichi", "migi_(parasyte)"]),
+ "akira": ("anime", ["akira_(manga)", "akira_(film)", "kaneda_shoutarou_(akira)", "shima_tetsuo",
+                    "kei_(akira)", "akira"]),
+ "hajime no ippo": ("anime", ["hajime_no_ippo", "makunouchi_ippo", "takamura_mamoru",
+                              "kumi_mashiba", "aoki_masaru"]),
+ "dorohedoro": ("anime", ["dorohedoro", "nikaidou", "caiman_(dorohedoro)", "noi_(dorohedoro)",
+                          "shin_(dorohedoro)", "ebisu_(dorohedoro)"]),
+ "nier automata": ("game", ["nier_(series)", "yorha_no.2_type_b", "nier_automata",
+                            "yorha_no.9_type_s", "kaine_(nier)", "devola_and_popola"]),
+ "samurai champloo": ("anime", ["samurai_champloo", "mugen_(samurai_champloo)", "jin_(samurai_champloo)",
+                                "fuu_(samurai_champloo)"]),
+ "shokugeki no soma": ("anime", ["shokugeki_no_souma", "nakiri_erina", "yukihira_souma",
+                                 "tadokoro_megumi", "nakiri_alice"]),
+ "tales from earthsea": ("anime", ["ged_senki", "tales_from_earthsea", "therru", "arren_(earthsea)"]),
+ "fruits basket": ("anime", ["fruits_basket", "honda_tohru", "sohma_kyou", "sohma_yuki", "sohma_shigure"]),
+ "love live": ("anime", ["love_live!", "love_live!_school_idol_project", "yazawa_nico", "nishikino_maki",
+                         "kousaka_honoka", "minami_kotori", "sonoda_umi", "ayase_eli"]),
+ "parasyte": ("anime", ["kiseijuu", "izumi_shinichi", "migi_(parasyte)", "murano_satomi"]),
 }
-TARGET = 15
+TARGET = 20
 MIN_PER_SERIES = 8
 
 BLOCK = {"text","english_text","watermark","web_address","logo","signature","artist_name",
@@ -31,6 +38,12 @@ BLOCK = {"text","english_text","watermark","web_address","logo","signature","art
          "speech_bubble","thought_bubble","nameplate","magazine_(object)",
          "album_cover","movie_poster","title_screen","parody","meme"}
 STYLE = ["anime art", "phone wallpaper", "vertical wallpaper", "digital art", "illustration"]
+NSFW_TAGS = {"breasts","large_breasts","huge_breasts","cleavage","nipples","panties","ass","thighs",
+             "bare_legs","underwear","bra","lingerie","navel","midriff","bikini","swimsuit","leotard",
+             "sweat","wet","see-through","revealing_clothes","spread_legs","lying","on_back",
+             "1girl","1boy","2girls","2boys","multiple_boys","multiple_girls","male_focus","female",
+             "solo_focus","cowboy_shot","from_behind","from_side","from_above","from_below",
+             "highres","absurdres","lowres","commentary","translation_request","official_art"}
 
 def api(tags, page=1):
     for attempt in range(3):
@@ -91,7 +104,7 @@ def has_text(im):
     try:
         import pytesseract
         t = pytesseract.image_to_string(im, config="--psm 11")
-        return len(re.sub(r"[^A-Za-z0-9]", "", t or "")) >= 14
+        return len(re.sub(r"[^A-Za-z0-9]", "", t or "")) >= 16
     except Exception:
         return False
 
@@ -111,6 +124,9 @@ def main():
                       f"{tag} rating:general width:>=900 height:>=1500 order:score"):
                 more = api(q) or []
                 time.sleep(1.5)
+                if len(more) >= 20 and len(posts) < 40:
+                    more += api(q, page=2) or []
+                    time.sleep(1.5)
                 have = {x.get("id") for x in posts}
                 posts += [x for x in more if x.get("id") not in have]
                 if len(posts) >= 60: break
@@ -153,7 +169,7 @@ def main():
                 gen = []
                 for g in (p.get("tag_string_general") or "").split():
                     g2 = g.replace("_"," ")
-                    if g in BLOCK or g2 in BLOCK or g.startswith("-"): continue
+                    if g in BLOCK or g in NSFW_TAGS or g2 in NSFW_TAGS or g.startswith("-"): continue
                     if not (3 <= len(g2) <= 26) or g2 in gen: continue
                     gen.append(g2)
                     if len(gen) >= 6: break
