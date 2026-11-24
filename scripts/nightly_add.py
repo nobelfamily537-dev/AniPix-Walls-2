@@ -24,16 +24,12 @@ TARGET = 15
 MIN_PER_SERIES = 8
 
 BLOCK = {"text","english_text","watermark","web_address","logo","signature","artist_name",
-         "comic","4koma","multiple_views","border","letterboxed","translated","commentary",
-         "commentary_request","translation_request","character_request","sketch","monochrome",
-         "greyscale","censored","bar_censor","mosaic_censoring","official_art","revision",
-         "third-party_edit","twitter_username","patreon_username","photo","realistic",
-         "absurdres","highres","lowres","bad_id","bad_pixiv_id","bad_twitter_id","bad_link",
-         "bad_anatomy","mutated_hands","extra_limbs","jpeg_artifacts","partially_translated",
-         "speech_bubble","thought_bubble","sign","nameplate","book","magazine_(object)",
-         "screen","television","computer","phone_screen","poster_(object)","album_cover",
-         "cover","title_screen","movie_poster","logo_parody","parody","meme","screencap",
-         "reference_sheet","character_sheet","chart","diagram","map","text_focus"}
+         "comic","4koma","multiple_views","border","letterboxed","translated",
+         "commentary","commentary_request","translation_request","character_request",
+         "censored","bar_censor","mosaic_censoring","photo","realistic","screencap",
+         "reference_sheet","character_sheet","chart","diagram","map","text_focus",
+         "speech_bubble","thought_bubble","nameplate","magazine_(object)",
+         "album_cover","movie_poster","title_screen","parody","meme"}
 STYLE = ["anime art", "phone wallpaper", "vertical wallpaper", "digital art", "illustration"]
 
 def api(tags, page=1):
@@ -103,7 +99,7 @@ def main():
     existing = set()
     for d in ("anime", "game"):
         if os.path.isdir(d): existing |= set(os.listdir(d))
-    seen = set(); batch = []; skipped = {}
+    seen = set(); batch = []; skipped = {}; why = {}
     for series, (cat, cands) in SPECS.items():
         os.makedirs(cat, exist_ok=True)
         got = 0
@@ -120,11 +116,15 @@ def main():
                 if not p.get("file_url") or not p.get("width"): continue
                 if p.get("rating") not in (None, "g"): continue
                 gen = set((p.get("tag_string_general") or "").split())
-                if gen & BLOCK: continue
+                hit = gen & BLOCK
+                if hit:
+                    why[",".join(sorted(hit))[:40]] = why.get(",".join(sorted(hit))[:40], 0) + 1
+                    continue
                 if p["width"] < 900 or p["height"] < 1500: continue
                 if p["height"] <= p["width"]: continue
                 ok.append(p)
             print(f"  {series} :: {tag} -> {len(posts)} raw, {len(ok)} usable")
+            if why: print("    blocked:", sorted(why.items(), key=lambda x: -x[1])[:6])
             for p in ok:
                 if got >= TARGET: break
                 if p.get("md5") in seen: continue
