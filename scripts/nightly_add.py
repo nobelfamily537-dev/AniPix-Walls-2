@@ -106,22 +106,27 @@ def main():
         for tag in cands:
             if got >= TARGET: break
             posts = []
-            for q in (f"{tag} rating:general width:>=1080 height:>=1920 order:score",
-                      f"{tag} rating:general width:>=1000 height:>=1500 order:score"):
-                posts = api(q) or []
+            for q in (f"{tag} solo rating:general width:>=1080 height:>=1920 order:score",
+                      f"{tag} rating:general width:>=1080 height:>=1920 order:score",
+                      f"{tag} rating:general width:>=900 height:>=1500 order:score"):
+                more = api(q) or []
                 time.sleep(1.5)
-                if len(posts) >= 5: break
+                have = {x.get("id") for x in posts}
+                posts += [x for x in more if x.get("id") not in have]
+                if len(posts) >= 60: break
             ok = []
             for p in posts:
-                if not p.get("file_url") or not p.get("width"): continue
+                if not p.get("file_url"): continue
                 if p.get("rating") not in (None, "g"): continue
+                if p.get("file_ext") not in ("jpg", "jpeg", "png", "webp"): continue
+                w = p.get("image_width") or 0; h = p.get("image_height") or 0
+                if w < 900 or h < 1500 or h <= w: continue
+                if not (0.46 <= w / h <= 0.74): continue
+                if (p.get("tag_count_character") or 0) > 6: continue
                 gen = set((p.get("tag_string_general") or "").split())
                 hit = gen & BLOCK
                 if hit:
-                    why[",".join(sorted(hit))[:40]] = why.get(",".join(sorted(hit))[:40], 0) + 1
-                    continue
-                if p["width"] < 900 or p["height"] < 1500: continue
-                if p["height"] <= p["width"]: continue
+                    k = ",".join(sorted(hit))[:40]; why[k] = why.get(k, 0) + 1; continue
                 ok.append(p)
             print(f"  {series} :: {tag} -> {len(posts)} raw, {len(ok)} usable")
             if why: print("    blocked:", sorted(why.items(), key=lambda x: -x[1])[:6])
@@ -162,7 +167,7 @@ def main():
                     if extra not in tags: tags.append(extra)
                 batch.append({"id": wid, "category": cat, "series": series,
                               "tags": ",".join(tags[:15]), "src": str(p["id"]),
-                              "dims": f"{p['width']}x{p['height']}"})
+                              "dims": f"{p.get('image_width')}x{p.get('image_height')}"})
                 got += 1
                 time.sleep(0.5)
         print(f"SERIES RESULT {series}: {got}")
