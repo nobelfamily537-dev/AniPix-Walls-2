@@ -1,27 +1,31 @@
 name: Fetch wallpapers from Wallhaven
 
-# This is the ONLY place images can be fetched from. The agent sandbox blocks
-# wallhaven.cc, pinterest.com, danbooru and most image hosts; GitHub runners
-# have full internet.
+# The ONLY place images can be fetched from: the agent sandbox blocks
+# wallhaven.cc, pinterest.com, danbooru and most image hosts, GitHub runners
+# do not.
 #
-# It stages images into this repo (volume 2) and commits them with plain git.
-# It does NOT touch wallpapers.json - that index lives in AniPix-Walls and is
-# updated by the caller from staging/manifest.json.
+# Images land in this repo (volume 2) and are committed with plain git.
+# wallpapers.json is NOT touched here - it lives in AniPix-Walls and is updated
+# separately from staging/manifest.json.
 
 on:
+  schedule:
+    - cron: "30 23 * * *"   # 05:00 IST
+    - cron: "30 11 * * *"   # 17:00 IST
   workflow_dispatch:
     inputs:
       series:
-        description: "Comma-separated search terms (e.g. frieren,dandadan,mashle)"
-        required: true
+        description: "Optional: comma-separated terms. Blank = use series.txt rotation."
+        required: false
+        default: ""
       per_series:
         description: "Max wallpapers per term"
         required: false
-        default: "8"
+        default: "6"
       max_total:
         description: "Hard cap for the run"
         required: false
-        default: "120"
+        default: "60"
 
 permissions:
   contents: write
@@ -44,32 +48,80 @@ jobs:
       - name: Guard - record file count before
         run: echo "BEFORE=$(git ls-files | wc -l)" >> "$GITHUB_ENV"
 
-      - name: Fetch from Wallhaven
+      - name: Pick the next series to fetch
         env:
-          SERIES: ${{ inputs.series }}
-          PER_SERIES: ${{ inputs.per_series }}
-          MAX_TOTAL: ${{ inputs.max_total }}
+          MANUAL: ${{ inputs.series }}
+          BATCH: "10"
+        run: |
+          python - <<'PY'
+          import json, os
+          manual = (os.environ.get("MANUAL") or "").strip()
+          batch = int(os.environ.get("BATCH", "10"))
+          if manual:
+              picked = [s.strip() for s in manual.split(",") if s.strip()]
+              print("manual:", picked)
+          else:
+              all_series = [l.strip() for l in open("series.txt") if l.strip()]
+              try:
+                  done = set(json.load(open("state.json")))
+              except Exception:
+                  done = set()
+              picked = [s for s in all_series if s not in done][:batch]
+              if not picked:
+                  print("all series already fetched - nothing to do")
+              print("rotation:", picked)
+          with open(os.environ["GITHUB_ENV"], "a") as f:
+              f.write("SERIES_LIST=" + ",".join(picked) + "\n")
+          PY
+
+      - name: Fetch from Wallhaven
+        if: env.SERIES_LIST != ''
+        env:
+          SERIES: ${{ env.SERIES_LIST }}
+          PER_SERIES: ${{ inputs.per_series || '6' }}
+          MAX_TOTAL: ${{ inputs.max_total || '60' }}
         run: python scripts/fetch_wallpapers.py
 
       - name: Place files in category folders
+        if: env.SERIES_LIST != ''
         run: |
           python - <<'PY'
           import json, os, shutil
-          m = json.load(open("staging/manifest.json"))
+          try:
+              m = json.load(open("staging/manifest.json"))
+          except Exception:
+              m = []
           if not m:
               print("nothing staged")
               raise SystemExit(0)
           cats = ["anime", "anime2"]
           for i, e in enumerate(m):
               cat = cats[i % 2]
+              os.makedirs(cat, exist_ok=True)
               for suffix in ("", "_thumb"):
-                  src = f"staging/{e['id']}{suffix}.webp"
-                  dst = f"{cat}/{e['id']}{suffix}.webp"
-                  os.makedirs(cat, exist_ok=True)
-                  shutil.move(src, dst)
+                  shutil.move(f"staging/{e['id']}{suffix}.webp", f"{cat}/{e['id']}{suffix}.webp")
               e["category"] = cat
           json.dump(m, open("staging/manifest.json", "w"), indent=1)
           print(f"placed {len(m)} wallpapers")
+          PY
+
+      - name: Update rotation state
+        if: env.SERIES_LIST != '' && inputs.series == ''
+        env:
+          DONE: ${{ env.SERIES_LIST }}
+        run: |
+          python - <<'PY'
+          import json, os
+          try:
+              done = json.load(open("state.json"))
+          except Exception:
+              done = []
+          for s in os.environ["DONE"].split(","):
+              s = s.strip()
+              if s and s not in done:
+                  done.append(s)
+          json.dump(done, open("state.json", "w"), indent=1)
+          print(f"rotation state: {len(done)} series done")
           PY
 
       - name: Commit and push
@@ -88,7 +140,7 @@ jobs:
             echo "::error::more deletions than additions - refusing to commit"
             exit 1
           fi
-          git commit -m "Fetch from Wallhaven: $(python -c "import json;print(len(json.load(open('staging/manifest.json'))))") wallpapers"
+          git commit -m "Fetch from Wallhaven: $(git status --short | grep -c '^A') files"
           git push
 
       - name: Guard - file count must not drop
@@ -100,16 +152,3 @@ jobs:
             exit 1
           fi
           echo "ok"
-
-      - name: Summary
-        run: |
-          python - <<'PY'
-          import json
-          try:
-              m = json.load(open("staging/manifest.json"))
-          except Exception:
-              m = []
-          print(f"staged {len(m)} wallpapers")
-          for e in m[:40]:
-              print(f"  {e['category']}/{e['id']}  {e['series']}  {e['res']}")
-          PY
