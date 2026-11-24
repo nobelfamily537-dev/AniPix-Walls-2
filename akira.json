@@ -1,14 +1,41 @@
 {
  "date": "2026-11-24",
- "count": 1,
+ "count": 4,
  "entries": [
   {
-   "id": "wpx5162ae5603",
+   "id": "wpx3aa63e1855",
    "category": "anime",
    "series": "akira",
-   "tags": "kaneda shoutarou (akira),akira,1boy,barefoot,black hair,crew neck,crossed ankles,eating,white,anime art,phone wallpaper,vertical wallpaper,digital art,illustration",
-   "src": "8830595",
+   "tags": "kaneda shoutarou (akira),akira,1boy,biker clothes,black hair,boots,brown boots,cyberpunk,grey,anime art,phone wallpaper,vertical wallpaper,digital art,illustration",
+   "src": "5190628",
    "dims": "1261x1600",
+   "copyright": "akira_(manga)"
+  },
+  {
+   "id": "wpxff7d8b43b1",
+   "category": "anime",
+   "series": "akira",
+   "tags": "kaneda shoutarou (akira),akira,1boy,boots,brown boots,equipment layout,jacket,kaneda shoutarou's bike,white,anime art,phone wallpaper,vertical wallpaper,digital art,illustration",
+   "src": "6637544",
+   "dims": "1261x1600",
+   "copyright": "akira_(manga)"
+  },
+  {
+   "id": "wpx9a1231e9b6",
+   "category": "anime",
+   "series": "akira",
+   "tags": "kaneda shoutarou (akira),akira,1boy,black hair,cropped legs,from behind,jacket,long sleeves,red,anime art,phone wallpaper,vertical wallpaper,digital art,illustration",
+   "src": "10693645",
+   "dims": "1261x1600",
+   "copyright": "akira_(manga)"
+  },
+  {
+   "id": "wpx859acd4995",
+   "category": "anime",
+   "series": "akira",
+   "tags": "kai (akira),akira,2boys,arm up,black hair,blue vest,brown eyes,brown hair,red,anime art,phone wallpaper,vertical wallpaper,digital art,illustration",
+   "src": "8986520",
+   "dims": "1349x1884",
    "copyright": "akira_(manga)"
   }
  ]
