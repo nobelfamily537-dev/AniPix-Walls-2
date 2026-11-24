@@ -7,8 +7,8 @@ from PIL import Image
 
 UA = {"User-Agent": "AniPixWallpaperBot/1.0 (wallpaper indexing; nobelfamily537@gmail.com)"}
 COPY = {"akira_(manga)", "akira_(film)"}
-QUERIES = ["akira_(manga) solo", "akira_(film) solo", "kaneda_shoutarou_(akira)",
-           "shima_tetsuo", "kei_(akira)", "akira_(manga)", "akira_(film)"]
+QUERIES = ["kaneda_shoutarou_(akira)", "shima_tetsuo", "kei_(akira)", "akira_(manga)",
+           "akira_(film)", "yamagata_(akira)", "kai_(akira)", "akira_(manga) solo"]
 BLOCK = {"text","english_text","watermark","web_address","logo","signature","artist_name",
          "comic","4koma","multiple_views","border","translated","commentary","translation_request",
          "parody","crossover","cosplay","akira_slide","reference","meme","screencap","photo",
@@ -70,7 +70,7 @@ def process(raw):
 def has_text(im):
     try:
         import pytesseract
-        return len(re.sub(r"[^A-Za-z0-9]", "", pytesseract.image_to_string(im, config="--psm 11") or "")) >= 16
+        return len(re.sub(r"[^A-Za-z0-9]", "", pytesseract.image_to_string(im, config="--psm 11") or "")) >= 22
     except Exception:
         return False
 
@@ -79,6 +79,9 @@ seen, batch, got = set(), [], 0
 for q in QUERIES:
     if got >= 20: break
     posts = api(f"{q} rating:general width:>=1080 height:>=1920 order:score")
+    time.sleep(1.5)
+    posts += [x for x in (api(f"{q} rating:general width:>=1080 height:>=1920 order:score", page=2) or [])
+              if x.get("id") not in {y.get("id") for y in posts}]
     time.sleep(1.5)
     posts += [p for p in (api(f"{q} rating:general width:>=900 height:>=1500 order:score") or [])
               if p.get("id") not in {x.get("id") for x in posts}]
