@@ -2,7 +2,7 @@ name: nightly-add
 on:
   push:
     paths:
-      - "trigger/**"
+      - "trigger/add.txt"
 permissions:
   contents: write
 jobs:
